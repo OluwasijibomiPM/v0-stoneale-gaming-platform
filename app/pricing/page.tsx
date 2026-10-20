@@ -4,14 +4,22 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Check, Crown, Sparkles } from "lucide-react"
+import { StellarPaymentDialog } from "@/components/stellar-payment-dialog"
+import { PLAN_PRICES_USD, type BillingCycle, type PlanId } from "@/lib/payments/catalog"
+
+type SubscriptionResult = {
+  subscription: { plan: PlanId; billingCycle: BillingCycle; nextBillingDate: string }
+}
 
 export default function PricingPage() {
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly")
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly")
+  const [selectedPlan, setSelectedPlan] = useState<{ id: PlanId; name: string; price: number } | null>(null)
 
   const plans = [
     {
+      id: "basic" as const,
       name: "Basic Access",
-      price: billingCycle === "monthly" ? 1 : 10,
+      price: PLAN_PRICES_USD.basic[billingCycle],
       description: "Essential mental wellness gaming",
       features: [
         "Access to all mindfulness games",
@@ -25,8 +33,9 @@ export default function PricingPage() {
       popular: false,
     },
     {
+      id: "premium" as const,
       name: "Premium",
-      price: billingCycle === "monthly" ? 5 : 50,
+      price: PLAN_PRICES_USD.premium[billingCycle],
       description: "Advanced features & professional support",
       features: [
         "Everything in Basic",
@@ -43,11 +52,6 @@ export default function PricingPage() {
     },
   ]
 
-  const handleSubscribe = async (planName: string, price: number) => {
-    // This would integrate with actual payment processor
-    console.log("[v0] Subscribing to:", planName, "Price:", price)
-    alert(`Subscribing to ${planName} plan for $${price}/${billingCycle}`)
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 p-6">
@@ -130,7 +134,7 @@ export default function PricingPage() {
                   ))}
                 </ul>
                 <Button
-                  onClick={() => handleSubscribe(plan.name, plan.price)}
+                  onClick={() => setSelectedPlan({ id: plan.id, name: plan.name, price: plan.price })}
                   className={`w-full bg-gradient-to-r ${plan.gradient} hover:opacity-90 transition-opacity`}
                 >
                   Subscribe Now
@@ -160,6 +164,24 @@ export default function PricingPage() {
           </CardContent>
         </Card>
       </div>
+
+      {selectedPlan && (
+        <StellarPaymentDialog<SubscriptionResult>
+          open={selectedPlan !== null}
+          onOpenChange={(open) => !open && setSelectedPlan(null)}
+          title={`Subscribe to ${selectedPlan.name}`}
+          description={`$${selectedPlan.price} per ${billingCycle === "monthly" ? "month" : "year"}, paid on Stellar`}
+          product={{ type: "subscription", plan: selectedPlan.id, billingCycle }}
+          usd={selectedPlan.price}
+          confirmEndpoint="/api/payments/subscribe"
+          renderSuccess={({ subscription }) => (
+            <p className="text-sm text-neutral-300">
+              Your {selectedPlan.name} plan is active. Next payment due{" "}
+              {new Date(subscription.nextBillingDate).toLocaleDateString()}.
+            </p>
+          )}
+        />
+      )}
     </div>
   )
 }

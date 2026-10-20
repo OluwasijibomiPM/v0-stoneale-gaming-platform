@@ -29,6 +29,9 @@ export default function HomePage() {
             <Link href="/forums" className="text-neutral-400 hover:text-amber-200 transition-colors">
               Forums
             </Link>
+            <Link href="/tournaments" className="text-neutral-400 hover:text-amber-200 transition-colors">
+              Tournaments
+            </Link>
             <Link href="/pricing" className="text-neutral-400 hover:text-amber-200 transition-colors">
               Pricing
             </Link>

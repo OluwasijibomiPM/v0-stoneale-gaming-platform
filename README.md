@@ -28,3 +28,16 @@ Continue building your app on:
 2. Deploy your chats from the v0 interface
 3. Changes are automatically pushed to this repository
 4. Vercel deploys the latest version from this repository
+
+## Stellar integration
+
+Wallets connect through [Freighter](https://www.freighter.app/), and plans (`/pricing`) and specialist sessions (`/booking`) are paid in XLM or USDC on Stellar.
+
+1. Copy `.env.example` to `.env.local` and fill it in. Set the same variables in Vercel.
+2. Payment flow:
+   - The app asks `/api/payments/quote` for a signed quote: the price in the chosen asset, the treasury address and a unique memo.
+   - Freighter signs the payment and the browser submits it to Horizon.
+   - `/api/payments/subscribe` or `/api/payments/book-session` checks on Horizon that the transaction paid the quoted amount, in the quoted asset, to the treasury, with the quoted memo.
+3. XLM prices come from CoinGecko and are locked in the quote for 10 minutes.
+
+Subscriptions and bookings aren't stored in a database yet, so a confirmed transaction hash isn't recorded and could be confirmed twice. Store used hashes once persistence is added.

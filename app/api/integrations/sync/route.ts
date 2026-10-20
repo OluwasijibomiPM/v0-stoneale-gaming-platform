@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         {
           type: "exercise",
           duration: 30,
-          type: "cardio",
+          activity: "cardio",
           timestamp: new Date(),
         },
       ],
