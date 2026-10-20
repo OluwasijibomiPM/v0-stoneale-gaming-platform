@@ -1,15 +1,18 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 import {
   getAddress,
   getNetwork,
   isAllowed,
   isConnected,
   requestAccess,
+  signTransaction,
   WatchWalletChanges,
 } from "@stellar/freighter-api"
+import type { contract } from "@stellar/stellar-sdk"
 import { STELLAR_NETWORK } from "@/lib/stellar/config"
+import { getStoneBalance, type ContractSigner } from "@/lib/stellar/contracts"
 import { fetchBalances, type StellarBalances } from "@/lib/stellar/horizon"
 
 export type WalletStatus = "checking" | "not-installed" | "disconnected" | "connecting" | "connected"
@@ -21,8 +24,12 @@ type StellarWalletContextValue = {
   // true when Freighter is on a different network than the app expects
   wrongNetwork: boolean
   balances: StellarBalances | null
+  // STONE reward points from the rewards contract
+  stoneBalance: bigint | null
   balancesLoading: boolean
   error: string | null
+  // Signs Soroban contract calls with Freighter; null unless connected to the right network
+  signer: ContractSigner | null
   connect: () => Promise<void>
   disconnect: () => void
   refreshBalances: () => Promise<void>
@@ -56,10 +63,19 @@ export function StellarWalletProvider({ children }: { children: React.ReactNode 
   const [address, setAddress] = useState<string | null>(null)
   const [walletNetworkPassphrase, setWalletNetworkPassphrase] = useState<string | null>(null)
   const [balances, setBalances] = useState<StellarBalances | null>(null)
+  const [stoneBalance, setStoneBalance] = useState<bigint | null>(null)
   const [balancesLoading, setBalancesLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const wrongNetwork = walletNetworkPassphrase !== null && walletNetworkPassphrase !== STELLAR_NETWORK.passphrase
+
+  const signer = useMemo<ContractSigner | null>(
+    () =>
+      status === "connected" && address && !wrongNetwork
+        ? { publicKey: address, signTransaction: signTransaction as contract.SignTransaction }
+        : null,
+    [status, address, wrongNetwork],
+  )
 
   const loadNetwork = useCallback(async () => {
     const network = await getNetwork()
@@ -130,17 +146,25 @@ export function StellarWalletProvider({ children }: { children: React.ReactNode 
   const refreshBalances = useCallback(async () => {
     if (!address || wrongNetwork) {
       setBalances(null)
+      setStoneBalance(null)
       return
     }
     setBalancesLoading(true)
-    try {
-      setBalances(await fetchBalances(address, STELLAR_NETWORK))
-    } catch (err) {
-      console.error("Failed to load Stellar balances:", err)
-      setBalances(null)
-    } finally {
-      setBalancesLoading(false)
-    }
+    await Promise.all([
+      fetchBalances(address, STELLAR_NETWORK)
+        .then(setBalances)
+        .catch((err) => {
+          console.error("Failed to load Stellar balances:", err)
+          setBalances(null)
+        }),
+      getStoneBalance(address)
+        .then(setStoneBalance)
+        .catch((err) => {
+          console.error("Failed to load STONE balance:", err)
+          setStoneBalance(null)
+        }),
+    ])
+    setBalancesLoading(false)
   }, [address, wrongNetwork])
 
   useEffect(() => {
@@ -173,6 +197,7 @@ export function StellarWalletProvider({ children }: { children: React.ReactNode 
     setAddress(null)
     setWalletNetworkPassphrase(null)
     setBalances(null)
+    setStoneBalance(null)
     setError(null)
     setStatus("disconnected")
   }, [])
@@ -185,8 +210,10 @@ export function StellarWalletProvider({ children }: { children: React.ReactNode 
         walletNetworkPassphrase,
         wrongNetwork,
         balances,
+        stoneBalance,
         balancesLoading,
         error,
+        signer,
         connect,
         disconnect,
         refreshBalances,

@@ -3,7 +3,7 @@ extern crate std;
 
 use super::*;
 use soroban_sdk::{
-    testutils::Address as _, token::StellarAssetClient, token::TokenClient, vec, Env,
+    symbol_short, testutils::Address as _, token::StellarAssetClient, token::TokenClient, vec, Env,
 };
 
 struct Setup {
@@ -45,6 +45,8 @@ fn setup(player_count: usize) -> Setup {
 fn create(s: &Setup, entry_fee: i128, max_players: u32, split: Vec<u32>) -> u64 {
     s.client.create(
         &s.organizer,
+        &String::from_str(&s.env, "Weekly Chess Cup"),
+        &symbol_short!("chess"),
         &s.token.address,
         &entry_fee,
         &max_players,
@@ -76,6 +78,8 @@ fn full_tournament_pays_winners() {
     assert_eq!(s.token.balance(&s.client.address), 0);
 
     let t = s.client.tournament(&id);
+    assert_eq!(t.name, String::from_str(&s.env, "Weekly Chess Cup"));
+    assert_eq!(t.game, symbol_short!("chess"));
     assert_eq!(t.status, Status::Finished);
     assert_eq!(
         t.winners,
@@ -155,8 +159,31 @@ fn rejects_invalid_config() {
     ];
     for (fee, max, split) in bad {
         assert_eq!(
-            s.client
-                .try_create(&s.organizer, &s.token.address, &fee, &max, &split),
+            s.client.try_create(
+                &s.organizer,
+                &String::from_str(&s.env, "Weekly Chess Cup"),
+                &symbol_short!("chess"),
+                &s.token.address,
+                &fee,
+                &max,
+                &split
+            ),
+            Err(Ok(Error::InvalidConfig))
+        );
+    }
+
+    let too_long = String::from_str(&s.env, &"x".repeat(65));
+    for name in [String::from_str(&s.env, ""), too_long] {
+        assert_eq!(
+            s.client.try_create(
+                &s.organizer,
+                &name,
+                &symbol_short!("chess"),
+                &s.token.address,
+                &100,
+                &8,
+                &vec![&s.env, 10_000]
+            ),
             Err(Ok(Error::InvalidConfig))
         );
     }

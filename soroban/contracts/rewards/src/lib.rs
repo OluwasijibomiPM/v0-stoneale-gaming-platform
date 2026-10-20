@@ -22,6 +22,7 @@ pub enum Error {
     NotMinter = 1,
     InvalidAmount = 2,
     InsufficientBalance = 3,
+    AlreadyAwarded = 4,
 }
 
 #[contracttype]
@@ -31,6 +32,8 @@ enum DataKey {
     TotalSupply,
     Minter(Address),
     Balance(Address),
+    // Set once a reference (e.g. a payment's transaction hash) has been rewarded
+    Reference(BytesN<32>),
 }
 
 #[contractevent]
@@ -156,6 +159,34 @@ impl Rewards {
         }
         .publish(&env);
         Ok(balance)
+    }
+
+    /// Like `award`, but at most once per `reference`, so the same event (such
+    /// as a payment) can never be rewarded twice. Returns the new balance.
+    pub fn award_once(
+        env: Env,
+        minter: Address,
+        to: Address,
+        amount: i128,
+        reason: Symbol,
+        reference: BytesN<32>,
+    ) -> Result<i128, Error> {
+        let key = DataKey::Reference(reference);
+        if env.storage().persistent().has(&key) {
+            return Err(Error::AlreadyAwarded);
+        }
+        let balance = Self::award(env.clone(), minter, to, amount, reason)?;
+        env.storage().persistent().set(&key, &true);
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
+        Ok(balance)
+    }
+
+    pub fn is_awarded(env: Env, reference: BytesN<32>) -> bool {
+        env.storage()
+            .persistent()
+            .has(&DataKey::Reference(reference))
     }
 
     /// Spends `amount` of the caller's points on `perk`. Returns the new balance.

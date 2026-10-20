@@ -21,8 +21,18 @@ const outlineButtonClass =
   "bg-gradient-to-r from-rose-900/50 to-amber-900/50 border-amber-700/50 text-amber-200 hover:from-rose-800/50 hover:to-amber-800/50"
 
 export function WalletConnect() {
-  const { status, address, wrongNetwork, balances, balancesLoading, error, connect, disconnect, refreshBalances } =
-    useStellarWallet()
+  const {
+    status,
+    address,
+    wrongNetwork,
+    balances,
+    stoneBalance,
+    balancesLoading,
+    error,
+    connect,
+    disconnect,
+    refreshBalances,
+  } = useStellarWallet()
   const [copied, setCopied] = useState(false)
 
   const copyAddress = async () => {
@@ -131,6 +141,14 @@ export function WalletConnect() {
                     {balances?.usdc != null ? formatBalance(balances.usdc) : balances ? "No trustline" : "—"}
                   </span>
                 </div>
+              </div>
+            )}
+            {!wrongNetwork && (
+              <div className="px-2 pb-2 flex justify-between text-sm">
+                <span className="text-neutral-400">STONE points</span>
+                <span className="text-amber-200 font-mono">
+                  {stoneBalance != null ? stoneBalance.toLocaleString() : "—"}
+                </span>
               </div>
             )}
 

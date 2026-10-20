@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { AlertTriangle, CheckCircle2, ExternalLink, Loader2 } from "lucide-react"
+import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, Sparkles } from "lucide-react"
 import { useStellarWallet } from "@/components/stellar-wallet-provider"
 import { WalletConnect } from "@/components/wallet-connect"
 import { STELLAR_NETWORK } from "@/lib/stellar/config"
@@ -11,6 +11,7 @@ import { formatBalance } from "@/lib/stellar/horizon"
 import { sendQuotedPayment } from "@/lib/stellar/pay"
 import type { PaymentAsset, PaymentProduct } from "@/lib/payments/catalog"
 import type { PaymentQuote } from "@/lib/payments/server"
+import type { PurchaseRewards } from "@/lib/stellar/admin"
 
 type Step = "idle" | "quoting" | "paying" | "verifying" | "done"
 
@@ -127,6 +128,9 @@ export function StellarPaymentDialog<T>({
     }
   }
 
+  // Confirmation routes also report the STONE points earned for the purchase
+  const rewards = (result as { rewards?: PurchaseRewards } | null)?.rewards
+
   const balance = asset === "XLM" ? balances?.xlm : balances?.usdc
   let balanceProblem: React.ReactNode = null
   if (canPay && balances) {
@@ -172,6 +176,16 @@ export function StellarPaymentDialog<T>({
               <span className="font-medium">Payment confirmed on Stellar</span>
             </div>
             {renderSuccess(result)}
+            {rewards &&
+              ("amount" in rewards ? (
+                <div className="flex items-center gap-2 text-sm text-amber-300">
+                  <Sparkles className="w-4 h-4" />
+                  You earned {Number(rewards.amount).toLocaleString()} STONE points (balance:{" "}
+                  {Number(rewards.balance).toLocaleString()})
+                </div>
+              ) : (
+                <div className="text-xs text-neutral-500">{rewards.error}</div>
+              ))}
             {txHash && (
               <a
                 href={`${STELLAR_NETWORK.explorerUrl}/tx/${txHash}`}

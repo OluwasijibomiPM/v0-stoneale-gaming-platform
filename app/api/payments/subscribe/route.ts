@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { PaymentError, paymentErrorResponse, verifyPayment } from "@/lib/payments/server"
+import { tryAwardPurchaseRewards } from "@/lib/stellar/admin"
 
 export async function POST(request: Request) {
   try {
@@ -20,7 +21,9 @@ export async function POST(request: Request) {
       nextBillingDate: new Date(Date.now() + (billingCycle === "monthly" ? 30 : 365) * 24 * 60 * 60 * 1000),
     }
 
-    return NextResponse.json({ success: true, subscription })
+    const rewards = await tryAwardPurchaseRewards(payment.payer, payment.usd, payment.txHash)
+
+    return NextResponse.json({ success: true, subscription, rewards })
   } catch (error) {
     const { body, status } = paymentErrorResponse(error)
     return NextResponse.json(body, { status })

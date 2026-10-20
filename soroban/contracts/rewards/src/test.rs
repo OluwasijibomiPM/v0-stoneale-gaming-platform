@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{symbol_short, testutils::Address as _, Env};
+use soroban_sdk::{symbol_short, testutils::Address as _, BytesN, Env};
 
 fn setup() -> (Env, RewardsClient<'static>, Address, Address) {
     let env = Env::default();
@@ -100,4 +100,32 @@ fn set_minter_fails_without_auth() {
     let contract_id = env.register(Rewards, (&admin,));
     let client = RewardsClient::new(&env, &contract_id);
     client.set_minter(&Address::generate(&env), &true);
+}
+
+#[test]
+fn award_once_per_reference() {
+    let (env, client, _, minter) = setup();
+    let player = Address::generate(&env);
+    let payment = BytesN::from_array(&env, &[7; 32]);
+
+    assert!(!client.is_awarded(&payment));
+    assert_eq!(
+        client.award_once(&minter, &player, &50, &symbol_short!("purchase"), &payment),
+        50
+    );
+    assert!(client.is_awarded(&payment));
+    assert_eq!(
+        client.try_award_once(&minter, &player, &50, &symbol_short!("purchase"), &payment),
+        Err(Ok(Error::AlreadyAwarded))
+    );
+    assert_eq!(client.balance(&player), 50);
+
+    // A rejected award doesn't use up the reference
+    let other = BytesN::from_array(&env, &[8; 32]);
+    let stranger = Address::generate(&env);
+    assert_eq!(
+        client.try_award_once(&stranger, &player, &50, &symbol_short!("purchase"), &other),
+        Err(Ok(Error::NotMinter))
+    );
+    assert!(!client.is_awarded(&other));
 }

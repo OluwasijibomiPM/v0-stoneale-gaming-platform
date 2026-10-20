@@ -10,7 +10,8 @@
 //! escrowed funds can only move by these rules.
 
 use soroban_sdk::{
-    contract, contracterror, contractevent, contractimpl, contracttype, token, Address, Env, Vec,
+    contract, contracterror, contractevent, contractimpl, contracttype, token, Address, Env,
+    String, Symbol, Vec,
 };
 
 const DAY_IN_LEDGERS: u32 = 17_280;
@@ -21,6 +22,7 @@ const BPS_TOTAL: u32 = 10_000;
 // Bounds keep each tournament's storage entry and payout loop small
 const MAX_PLAYERS: u32 = 128;
 const MAX_PRIZES: u32 = 10;
+const MAX_NAME_LEN: u32 = 64;
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -50,6 +52,9 @@ pub enum Status {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Tournament {
+    pub name: String,
+    // Which Stoneale game is played, e.g. `chess` or `sudoku`
+    pub game: Symbol,
     pub organizer: Address,
     pub token: Address,
     pub entry_fee: i128,
@@ -159,6 +164,8 @@ impl Tournaments {
     pub fn create(
         env: Env,
         organizer: Address,
+        name: String,
+        game: Symbol,
         token: Address,
         entry_fee: i128,
         max_players: u32,
@@ -167,7 +174,9 @@ impl Tournaments {
         organizer.require_auth();
 
         let prizes = prize_split_bps.len();
-        if entry_fee < 0
+        if name.len() == 0
+            || name.len() > MAX_NAME_LEN
+            || entry_fee < 0
             || max_players < 2
             || max_players > MAX_PLAYERS
             || prizes == 0
@@ -199,6 +208,8 @@ impl Tournaments {
             .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
 
         let tournament = Tournament {
+            name,
+            game,
             organizer: organizer.clone(),
             token: token.clone(),
             entry_fee,
