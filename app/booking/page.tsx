@@ -4,43 +4,56 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Calendar, Video, DollarSign } from "lucide-react"
+import { StellarPaymentDialog } from "@/components/stellar-payment-dialog"
+import { SESSION_PRICE_USD } from "@/lib/payments/catalog"
+
+type BookingResult = {
+  booking: { timeSlot: string; meetingLink: string }
+}
 
 export default function BookingPage() {
   const [selectedSpecialist, setSelectedSpecialist] = useState<string | null>(null)
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
+  const [checkoutOpen, setCheckoutOpen] = useState(false)
 
   const specialists = [
     {
+      id: "sarah-mitchell",
       name: "Dr. Sarah Mitchell",
       specialty: "Clinical Psychologist",
       experience: "15 years",
       rating: 4.9,
-      price: 5,
+      price: SESSION_PRICE_USD,
       avatar: "SM",
       available: ["Mon 2PM", "Wed 4PM", "Fri 10AM"],
     },
     {
+      id: "james-chen",
       name: "Dr. James Chen",
       specialty: "Mental Health Counselor",
       experience: "12 years",
       rating: 4.8,
-      price: 5,
+      price: SESSION_PRICE_USD,
       avatar: "JC",
       available: ["Tue 3PM", "Thu 1PM", "Sat 11AM"],
     },
     {
+      id: "emily-rodriguez",
       name: "Dr. Emily Rodriguez",
       specialty: "Wellness Coach",
       experience: "10 years",
       rating: 4.9,
-      price: 5,
+      price: SESSION_PRICE_USD,
       avatar: "ER",
       available: ["Mon 10AM", "Wed 2PM", "Fri 3PM"],
     },
   ]
 
-  const handleBooking = (specialistName: string) => {
-    console.log("[v0] Booking session with:", specialistName)
-    alert(`Booking session with ${specialistName} for $5`)
+  const specialist = specialists.find((s) => s.name === selectedSpecialist)
+
+  const selectSlot = (specialistName: string, slot: string) => {
+    setSelectedSpecialist(specialistName)
+    setSelectedSlot(slot)
   }
 
   return (
@@ -56,7 +69,7 @@ export default function BookingPage() {
           </p>
           <div className="flex items-center justify-center gap-2 text-sm text-amber-400">
             <DollarSign className="w-4 h-4" />
-            <span>$5 per session for Premium members</span>
+            <span>${SESSION_PRICE_USD} per session for Premium members, paid in XLM or USDC</span>
           </div>
         </div>
 
@@ -91,14 +104,22 @@ export default function BookingPage() {
                     <span>Available slots:</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {specialist.available.map((slot, slotIndex) => (
-                      <div
-                        key={slotIndex}
-                        className="px-3 py-1 bg-neutral-800/50 border border-amber-900/20 rounded text-xs text-neutral-300"
-                      >
-                        {slot}
-                      </div>
-                    ))}
+                    {specialist.available.map((slot, slotIndex) => {
+                      const isSelected = selectedSpecialist === specialist.name && selectedSlot === slot
+                      return (
+                        <button
+                          key={slotIndex}
+                          onClick={() => selectSlot(specialist.name, slot)}
+                          className={`px-3 py-1 border rounded text-xs transition-all ${
+                            isSelected
+                              ? "bg-amber-900/40 border-amber-500/60 text-amber-200"
+                              : "bg-neutral-800/50 border-amber-900/20 text-neutral-300 hover:border-amber-700/40"
+                          }`}
+                        >
+                          {slot}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
                 <div className="flex items-center justify-between pt-2">
@@ -109,10 +130,11 @@ export default function BookingPage() {
                   <div className="text-lg font-bold text-amber-400">${specialist.price}</div>
                 </div>
                 <Button
-                  onClick={() => handleBooking(specialist.name)}
+                  onClick={() => setCheckoutOpen(true)}
+                  disabled={selectedSpecialist !== specialist.name || !selectedSlot}
                   className="w-full bg-gradient-to-r from-rose-900 to-amber-900 hover:from-rose-800 hover:to-amber-800"
                 >
-                  Book Session
+                  {selectedSpecialist === specialist.name && selectedSlot ? "Book Session" : "Select a time slot"}
                 </Button>
               </CardContent>
             </Card>
@@ -155,6 +177,25 @@ export default function BookingPage() {
           </CardContent>
         </Card>
       </div>
+      {specialist && selectedSlot && (
+        <StellarPaymentDialog<BookingResult>
+          open={checkoutOpen}
+          onOpenChange={setCheckoutOpen}
+          title={`Book a session with ${specialist.name}`}
+          description={`${selectedSlot} video call, $${specialist.price} paid on Stellar`}
+          product={{ type: "session", specialistId: specialist.id, timeSlot: selectedSlot }}
+          usd={specialist.price}
+          confirmEndpoint="/api/payments/book-session"
+          renderSuccess={({ booking }) => (
+            <p className="text-sm text-neutral-300">
+              Your session on {booking.timeSlot} is booked. Join at{" "}
+              <a href={booking.meetingLink} className="text-amber-400 underline break-all">
+                {booking.meetingLink}
+              </a>
+            </p>
+          )}
+        />
+      )}
     </div>
   )
 }

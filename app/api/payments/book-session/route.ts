@@ -1,24 +1,28 @@
 import { NextResponse } from "next/server"
+import { PaymentError, paymentErrorResponse, verifyPayment } from "@/lib/payments/server"
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { specialistId, timeSlot, userId } = body
+    const payment = await verifyPayment(body.token, body.txHash)
+    if (payment.product.type !== "session") throw new PaymentError("Payment is not for a session")
 
-    // This would integrate with actual payment processor
+    const { specialistId, timeSlot } = payment.product
     const booking = {
-      id: `booking_${Date.now()}`,
-      userId,
+      id: `booking_${payment.txHash.substring(0, 16)}`,
+      wallet: payment.payer,
       specialistId,
       timeSlot,
-      amount: 5,
+      amountUsd: payment.usd,
+      paid: { asset: payment.asset, amount: payment.amount, txHash: payment.txHash },
       status: "confirmed",
-      meetingLink: `https://meet.stoneale.com/${Date.now()}`,
+      meetingLink: `https://meet.stoneale.com/${payment.txHash.substring(0, 16)}`,
       createdAt: new Date(),
     }
 
     return NextResponse.json({ success: true, booking })
   } catch (error) {
-    return NextResponse.json({ error: "Failed to process booking" }, { status: 500 })
+    const { body, status } = paymentErrorResponse(error)
+    return NextResponse.json(body, { status })
   }
 }

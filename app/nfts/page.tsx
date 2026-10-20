@@ -1,15 +1,12 @@
 "use client"
 
-import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trophy, Award, Target, Zap, Download, Network } from "lucide-react"
+import { Trophy, Award, Target, Zap, Download } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { STELLAR_NETWORK } from "@/lib/stellar/config"
 
 export default function NFTsPage() {
-  const [minting, setMinting] = useState(false)
-  const [mintingNetwork, setMintingNetwork] = useState<string | null>(null)
-
   const achievements = [
     {
       title: "Chess Master",
@@ -20,7 +17,6 @@ export default function NFTsPage() {
       icon: Trophy,
       rarity: "Legendary",
       color: "from-amber-500 to-yellow-500",
-      mintedOn: ["stacks", "base"],
     },
     {
       title: "Mindful Warrior",
@@ -31,7 +27,6 @@ export default function NFTsPage() {
       icon: Target,
       rarity: "Epic",
       color: "from-purple-500 to-pink-500",
-      mintedOn: [],
     },
     {
       title: "Wellness Streak",
@@ -42,7 +37,6 @@ export default function NFTsPage() {
       icon: Zap,
       rarity: "Rare",
       color: "from-blue-500 to-cyan-500",
-      mintedOn: ["ethereum"],
     },
     {
       title: "Community Helper",
@@ -53,26 +47,7 @@ export default function NFTsPage() {
       icon: Award,
       rarity: "Common",
       color: "from-green-500 to-emerald-500",
-      mintedOn: [],
     },
-  ]
-
-  const handleMint = async (achievementTitle: string, network: string) => {
-    setMinting(true)
-    setMintingNetwork(network)
-    console.log("[v0] Minting NFT for:", achievementTitle, "on", network)
-    await new Promise((resolve) => setTimeout(resolve, 2500))
-    alert(`Successfully minted "${achievementTitle}" NFT on ${network.toUpperCase()}!`)
-    setMinting(false)
-    setMintingNetwork(null)
-  }
-
-  const networkOptions = [
-    { id: "stacks", name: "Stacks", color: "from-purple-600 to-indigo-600" },
-    { id: "base", name: "Base", color: "from-blue-600 to-cyan-600" },
-    { id: "lisk", name: "Lisk", color: "from-blue-500 to-teal-500" },
-    { id: "ethereum", name: "Ethereum", color: "from-slate-600 to-gray-600" },
-    { id: "polygon", name: "Polygon", color: "from-purple-500 to-violet-600" },
   ]
 
   return (
@@ -84,26 +59,22 @@ export default function NFTsPage() {
             Progress NFTs
           </h1>
           <p className="text-neutral-400 max-w-2xl mx-auto">
-            Mint your achievements as blockchain NFTs on multiple networks - permanent proof of your mental wellness
-            journey
+            Mint your achievements as NFTs on Stellar - permanent proof of your mental wellness journey
           </p>
           <div className="flex items-center justify-center gap-2 flex-wrap">
-            <span className="text-sm text-neutral-500">Supported Networks:</span>
-            {networkOptions.map((network) => (
-              <Badge
-                key={network.id}
-                variant="outline"
-                className="bg-gradient-to-r from-neutral-900/50 to-neutral-800/50 border-amber-900/20 text-amber-300"
-              >
-                <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${network.color} mr-1.5`} />
-                {network.name}
-              </Badge>
-            ))}
+            <span className="text-sm text-neutral-500">Network:</span>
+            <Badge
+              variant="outline"
+              className="bg-gradient-to-r from-neutral-900/50 to-neutral-800/50 border-amber-900/20 text-amber-300"
+            >
+              <div className="w-2 h-2 rounded-full bg-gradient-to-r from-sky-400 to-indigo-500 mr-1.5" />
+              {STELLAR_NETWORK.name}
+            </Badge>
           </div>
         </div>
 
         {/* Stats Overview */}
-        <div className="grid md:grid-cols-4 gap-4">
+        <div className="grid md:grid-cols-3 gap-4">
           <Card className="bg-neutral-900/50 border-amber-900/20">
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-amber-400 mb-2">
@@ -115,21 +86,15 @@ export default function NFTsPage() {
           <Card className="bg-neutral-900/50 border-amber-900/20">
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-amber-400 mb-2">
-                {achievements.reduce((acc, a) => acc + a.mintedOn.length, 0)}
+                {achievements.filter((a) => !a.unlocked).length}
               </div>
-              <div className="text-sm text-neutral-400">Total Mints</div>
+              <div className="text-sm text-neutral-400">In Progress</div>
             </CardContent>
           </Card>
           <Card className="bg-neutral-900/50 border-amber-900/20">
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-amber-400 mb-2">{achievements.length}</div>
               <div className="text-sm text-neutral-400">Total Achievements</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-neutral-900/50 border-amber-900/20">
-            <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-amber-400 mb-2">{networkOptions.length}</div>
-              <div className="text-sm text-neutral-400">Networks</div>
             </CardContent>
           </Card>
         </div>
@@ -166,12 +131,6 @@ export default function NFTsPage() {
                         >
                           {achievement.rarity}
                         </span>
-                        {achievement.mintedOn.length > 0 && (
-                          <div className="flex items-center gap-1">
-                            <Network className="w-3 h-3 text-green-400" />
-                            <span className="text-xs text-green-400">{achievement.mintedOn.length} minted</span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -194,32 +153,15 @@ export default function NFTsPage() {
                 </div>
                 {achievement.unlocked ? (
                   <div className="space-y-3">
-                    <div className="text-xs text-neutral-400 font-medium">Mint on:</div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {networkOptions.map((network) => {
-                        const alreadyMinted = achievement.mintedOn.includes(network.id)
-                        return (
-                          <Button
-                            key={network.id}
-                            onClick={() => handleMint(achievement.title, network.name)}
-                            disabled={minting || alreadyMinted}
-                            size="sm"
-                            className={
-                              alreadyMinted
-                                ? "bg-green-900/30 text-green-400 border border-green-700/30 hover:bg-green-900/30"
-                                : "bg-gradient-to-r from-rose-900 to-amber-900 hover:from-rose-800 hover:to-amber-800"
-                            }
-                          >
-                            <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${network.color} mr-2`} />
-                            {alreadyMinted
-                              ? "Minted"
-                              : minting && mintingNetwork === network.name
-                                ? "Minting..."
-                                : network.name}
-                          </Button>
-                        )
-                      })}
-                    </div>
+                    <Button
+                      disabled
+                      size="sm"
+                      className="w-full bg-gradient-to-r from-rose-900 to-amber-900 text-amber-200"
+                      title="Achievement NFTs need the Soroban contract, which is still in development"
+                    >
+                      <div className="w-2 h-2 rounded-full bg-gradient-to-r from-sky-400 to-indigo-500 mr-2" />
+                      Mint on Stellar - coming soon
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -242,20 +184,18 @@ export default function NFTsPage() {
         {/* Info Card */}
         <Card className="bg-gradient-to-br from-rose-950/40 to-amber-950/40 border-amber-900/30">
           <CardHeader>
-            <CardTitle className="text-amber-200">About Multi-Chain NFTs</CardTitle>
+            <CardTitle className="text-amber-200">About Stellar NFTs</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-neutral-300 text-sm">
             <p>
-              Your achievements can be minted as NFTs on multiple blockchain networks including Stacks, Base, Lisk,
-              Ethereum, and Polygon - creating permanent, verifiable proof across different ecosystems.
+              Achievement NFTs will be issued by a Soroban smart contract on Stellar and sent to your connected Freighter
+              wallet - permanent, verifiable proof of your progress.
             </p>
             <p>
-              Each network offers unique benefits: Stacks for Bitcoin security, Base for low fees, Lisk for scalability,
-              Ethereum for maximum compatibility, and Polygon for fast transactions.
+              Stellar transactions settle in seconds for a fraction of a cent, so minting stays affordable even for
+              everyday milestones.
             </p>
-            <p className="text-amber-400">
-              Premium members can mint unlimited NFTs across all supported networks at no additional cost.
-            </p>
+            <p className="text-amber-400">Premium members will be able to mint unlimited achievement NFTs at no additional cost.</p>
           </CardContent>
         </Card>
       </div>
